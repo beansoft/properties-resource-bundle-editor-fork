@@ -15,7 +15,7 @@ import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.vfs.VirtualFileEvent
 import com.intellij.openapi.vfs.VirtualFileListener
 import com.intellij.openapi.vfs.VirtualFilePropertyEvent
-import com.intellij.lang.properties.util.MergingUpdateQueue
+import com.intellij.lang.properties.util.MergingUpdateQueueFork
 import com.intellij.openapi.application.runWriteAction
 import com.intellij.util.ui.update.Update
 import kotlinx.coroutines.Dispatchers
@@ -59,7 +59,7 @@ internal class ResourceBundleEditorFileListener(private val editor: ResourceBund
 
   private inner class MyVfsEventsProcessor {
     private val eventQueue = AtomicReference(ConcurrentCollectionFactory.createConcurrentSet<EventWithType>())
-    private val updateQueue = MyMergingUpdateQueue(project = project, editor = editor, eventQueue = eventQueue)
+    private val updateQueue = MyMergingUpdateQueueFork(project = project, editor = editor, eventQueue = eventQueue)
 
     fun queue(event: VirtualFileEvent, type: EventType) {
       eventQueue.updateAndGet {
@@ -101,11 +101,11 @@ private class SetViewerPropertyRunnable(private val editor: ResourceBundleEditor
   }
 }
 
-private class MyMergingUpdateQueue(
+private class MyMergingUpdateQueueFork(
   private val project: Project,
   private val editor: ResourceBundleEditor,
   private val eventQueue: AtomicReference<MutableSet<EventWithType>>,
-) : MergingUpdateQueue(
+) : MergingUpdateQueueFork(
   name = "rbe.vfs.listener.queue",
   mergingTimeSpan = 200,
   isActive = true,

@@ -7,6 +7,7 @@ import com.intellij.concurrency.ConcurrentCollectionFactory
 import com.intellij.ide.UiActivity
 import com.intellij.ide.UiActivity.AsyncBgOperation
 import com.intellij.ide.UiActivityMonitor
+import com.intellij.lang.properties.util.UpdateExecutor.Companion.executeInWriteActionField
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.Application
 import com.intellij.openapi.application.ApplicationManager
@@ -32,7 +33,6 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.launch
 import org.jetbrains.annotations.ApiStatus.Internal
-import org.jetbrains.annotations.ApiStatus.Obsolete
 import org.jetbrains.annotations.NonNls
 import org.jetbrains.annotations.TestOnly
 import org.jetbrains.annotations.VisibleForTesting
@@ -50,9 +50,9 @@ import kotlin.coroutines.coroutineContext
  *
  * Create an instance of this class and use [.queue] method to add new tasks.
  *
- * Sometimes [MergingUpdateQueue] can be used for control flow operations. **This kind of usage is discouraged**, in favor of
+ * Sometimes [MergingUpdateQueueFork] can be used for control flow operations. **This kind of usage is discouraged**, in favor of
  * [kotlinx.coroutines.flow.Flow] and [kotlinx.coroutines.flow.FlowKt.debounce].
- * If you are still using [MergingUpdateQueue], you can consider queuing via [MergingQueueUtil.queueTracked]
+ * If you are still using [MergingUpdateQueueFork], you can consider queuing via [MergingQueueUtil.queueTracked]
  * in order to notify the platform about scheduled updates.
  *
  * **Note:** consider to use [setRestartTimerOnAdd] to avoid updates stuck in the queue.
@@ -67,7 +67,7 @@ import kotlin.coroutines.coroutineContext
  * @param thread                 specifies on which thread the tasks are executed
  */
 //@Obsolete
-open class MergingUpdateQueue @JvmOverloads constructor(
+open class MergingUpdateQueueFork @JvmOverloads constructor(
   private val name: @NonNls String,
   private var mergingTimeSpan: Int,
   isActive: Boolean,
@@ -192,8 +192,8 @@ open class MergingUpdateQueue @JvmOverloads constructor(
       mergingTimeSpan: Int,
       coroutineScope: CoroutineScope,
       modalityStateComponent: JComponent? = null,
-    ): MergingUpdateQueue {
-      return MergingUpdateQueue(
+    ): MergingUpdateQueueFork {
+      return MergingUpdateQueueFork(
         name = name,
         mergingTimeSpan = mergingTimeSpan,
         isActive = true,
@@ -210,8 +210,8 @@ open class MergingUpdateQueue @JvmOverloads constructor(
       name: String,
       mergingTimeSpan: Int,
       coroutineScope: CoroutineScope,
-    ): MergingUpdateQueue {
-      return MergingUpdateQueue(
+    ): MergingUpdateQueueFork {
+      return MergingUpdateQueueFork(
         name = name,
         mergingTimeSpan = mergingTimeSpan,
         isActive = true,
@@ -223,7 +223,7 @@ open class MergingUpdateQueue @JvmOverloads constructor(
       )
     }
 
-    private val queues: MutableSet<MergingUpdateQueue>? = if (SystemProperties.getBooleanProperty("intellij.MergingUpdateQueue.enable.global.flusher", false)) {
+    private val queues: MutableSet<MergingUpdateQueueFork>? = if (SystemProperties.getBooleanProperty("intellij.MergingUpdateQueue.enable.global.flusher", false)) {
       ConcurrentHashMap.newKeySet()
     }
     else {
@@ -268,7 +268,7 @@ open class MergingUpdateQueue @JvmOverloads constructor(
    */
   @Internal
   @Deprecated("""use {@link #waitForAllExecuted(long, TimeUnit)} instead in tests  """)
-  fun usePassThroughInUnitTestMode(): MergingUpdateQueue {
+  fun usePassThroughInUnitTestMode(): MergingUpdateQueueFork {
     val app = ApplicationManager.getApplication()
     if (app == null || app.isUnitTestMode) {
       isPassThrough = true
@@ -374,7 +374,7 @@ open class MergingUpdateQueue @JvmOverloads constructor(
     }
   }
 
-  @Internal
+//  @Internal
   protected open suspend fun executeUpdates(updates: List<Update>) {
     var i = 0
     while (i < updates.size) {
@@ -404,7 +404,8 @@ open class MergingUpdateQueue @JvmOverloads constructor(
         update.setRejected()
       }
       else {
-        update.execute()
+//        update.execute()
+        UpdateExecutor.execute(update)
       }
     }
   }
@@ -487,7 +488,8 @@ open class MergingUpdateQueue @JvmOverloads constructor(
         continue
       }
 
-      if (update.executeInWriteAction) {
+//      if (update.executeInWriteAction) {
+      if(executeInWriteActionField.getBoolean(update)) {
         @Suppress("ForbiddenInSuspectContextMethod", "RedundantSuppression")
         ApplicationManager.getApplication().runWriteAction { execute(update) }
       }
@@ -617,7 +619,7 @@ open class MergingUpdateQueue @JvmOverloads constructor(
     }
   }
 
-  fun setRestartTimerOnAdd(restart: Boolean): MergingUpdateQueue {
+  fun setRestartTimerOnAdd(restart: Boolean): MergingUpdateQueueFork {
     restartOnAdd = restart
     return this
   }
