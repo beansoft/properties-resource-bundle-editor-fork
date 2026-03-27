@@ -15,7 +15,8 @@ import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.vfs.VirtualFileEvent
 import com.intellij.openapi.vfs.VirtualFileListener
 import com.intellij.openapi.vfs.VirtualFilePropertyEvent
-import com.intellij.util.ui.update.MergingUpdateQueue
+import com.intellij.lang.properties.util.MergingUpdateQueue
+import com.intellij.openapi.application.runWriteAction
 import com.intellij.util.ui.update.Update
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -34,7 +35,9 @@ internal class ResourceBundleEditorFileListener(private val editor: ResourceBund
   private val eventProcessor = MyVfsEventsProcessor()
 
   fun flush() {
-    FileDocumentManager.getInstance().saveAllDocuments()
+    runWriteAction {
+      FileDocumentManager.getInstance().saveAllDocuments()
+    }
     eventProcessor.flush()
   }
 

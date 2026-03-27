@@ -6,7 +6,13 @@ import com.intellij.ide.util.treeView.smartTree.TreeElement;
 import com.intellij.ide.util.treeView.smartTree.TreeElementWrapper;
 import com.intellij.lang.properties.editor.TextAttributesPresentation;
 import com.intellij.navigation.ItemPresentation;
+import com.intellij.openapi.application.Application;
+import com.intellij.openapi.application.ApplicationManager;
+import com.intellij.openapi.editor.Document;
 import com.intellij.openapi.editor.colors.EditorColorsManager;
+import com.intellij.openapi.editor.markup.TextAttributes;
+import com.intellij.openapi.fileEditor.FileDocumentManager;
+import com.intellij.openapi.util.Computable;
 import com.intellij.ui.SimpleTextAttributes;
 import org.jetbrains.annotations.NotNull;
 
@@ -37,11 +43,17 @@ public class ResourceBundleEditorRenderer extends NodeRenderer {
     }
     final ItemPresentation presentation = treeElement.getPresentation();
     if (presentation instanceof TextAttributesPresentation textAttributesPresentation) {
-      final String text = textAttributesPresentation.getPresentableText();
+//      final String text = textAttributesPresentation.getPresentableText();
+      Application application = ApplicationManager.getApplication();
+      String text = application.runReadAction(
+              (Computable<String>) () -> textAttributesPresentation.getPresentableText());
+
       if (text != null) {
-        SimpleTextAttributes attr = SimpleTextAttributes.fromTextAttributes(
-          textAttributesPresentation.getTextAttributes(
-            EditorColorsManager.getInstance().getSchemeForCurrentUITheme()));
+        TextAttributes textAttributes = application.runReadAction(
+                (Computable<TextAttributes>) () -> textAttributesPresentation.getTextAttributes(
+                        EditorColorsManager.getInstance().getSchemeForCurrentUITheme()));
+
+        SimpleTextAttributes attr = SimpleTextAttributes.fromTextAttributes(textAttributes);
         append(text, new SimpleTextAttributes(attr.getBgColor(), attr.getFgColor(), attr.getWaveColor(),
                                               attr.getStyle() | SimpleTextAttributes.STYLE_OPAQUE));
         return true;
