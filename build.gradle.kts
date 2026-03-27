@@ -1,5 +1,7 @@
 // Copyright 2000-2026 JetBrains s.r.o. and contributors. Use of this source code is governed by the Apache 2.0 license.
 import org.jetbrains.intellij.platform.gradle.TestFrameworkType
+import org.commonmark.parser.Parser
+import org.commonmark.renderer.html.HtmlRenderer
 
 plugins {
   id("java")
@@ -7,13 +9,19 @@ plugins {
   id("org.jetbrains.intellij.platform") version "2.13.1"
 }
 
-group = "com.intellij.properties.bundle.editor"
-version = "261.0.0"
+group = "github.beansoft.properties.bundle.editor.fork"
+version = "2026.1.0"
 
 repositories {
   mavenCentral()
   intellijPlatform {
     defaultRepositories()
+  }
+}
+
+buildscript {
+  dependencies {
+    classpath("org.commonmark:commonmark:0.22.0")// Markdown for changelog
   }
 }
 
@@ -48,10 +56,12 @@ intellijPlatform {
   pluginConfiguration {
     ideaVersion {
       sinceBuild = "253"
-      untilBuild = "999"
+      untilBuild = "263.*"
     }
 
-    changeNotes = ""
+    changeNotes.set(provider {
+      file("${rootDir}/CHANGELOG.md").readText().renderMarkdown()
+    })
   }
 }
 
@@ -61,4 +71,12 @@ tasks {
     sourceCompatibility = "21"
     targetCompatibility = "21"
   }
+}
+
+// https://github.com/commonmark/commonmark-java
+fun String.renderMarkdown(): String {
+  val parser = Parser.builder().build()
+  val document = parser.parse(this)
+  val renderer = HtmlRenderer.builder().build()
+  return renderer.render(document).trim()
 }
